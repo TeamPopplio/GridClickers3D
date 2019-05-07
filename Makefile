@@ -6,139 +6,84 @@ define n
 
 endef
 
-ifeq ($(strip $(DEVKITARM)),)
-$(error "Please set DEVKITARM in your environment. export DEVKITARM=<path to>devkitARM")
+ifeq ($(strip $(DEVKITPRO)),)
+$(error "Please set DEVKITPRO in your environment.$nexport DEVKITPRO=<path to>/devkitpro")
 endif
 
-ifeq ($(strip $(LOVEPOTION_3DS)),)
+ifeq ($(strip $(LOVEPOTION_SWITCH)),)
 
 export ERR_MSG := \
-$nPlease set LOVEPOTION_3DS in your environment.\
+$nPlease set LOVEPOTION_SWITCH in your environment.\
 $nThis should be the path to your Love Potion projects.\
 $nDo *NOT* save the *.elf file anywhere else.\
-$nexport LOVEPOTION_3DS=<path to>/LovePotion.elf
+$nexport LOVEPOTION_SWITCH=<path to>/LovePotion.elf
 $(error $(ERR_MSG))
 endif
 
-TOPDIR ?= $(CURDIR)
-include $(DEVKITARM)/3ds_rules
+TOPDIR = $(CURDIR)
+include $(DEVKITPRO)/libnx/switch_rules
 
 #---------------------------------------------------------------------------------
 # TARGET is the name of the output files
 # BUILD is the directory where object files & intermediate files will be placed
-# ROMFS is the directory containing your LOVE game
+# ROMFS is the directory containing your LOVE game (can be external from this directory)
+# An external project could be such as ../../MyProject
 #
-# APP_TITLE is the name of the app stored in the .3dsx file (Optional)
-# APP_AUTHOR is the author of the app stored in the .3dsx file (Optional)
-# APP_VERSION is the version of the app stored in the .3dsx file (Optional)
-# APP_TITLEID is the titleID of the app stored in the .3dsx file (Optional)
-# APP_DESCRIPTION is the description of the application
+# APP_TITLE is the name of the app stored in the .nacp file (Optional)
+# APP_AUTHOR is the author of the app stored in the .nacp file (Optional)
+# APP_VERSION is the version of the app stored in the .nacp file (Optional)
+# APP_TITLEID is the titleID of the app stored in the .nacp file (Optional)
 #
-# ICON is the filename of the icon (.png), relative to the project folder.
+# ICON is the filename of the icon (.jpg), relative to the project folder.
+#   If not set, it attempts to use one of the following (in this order):
+#     - <Project name>.jpg
+#     - icon.jpg
+#     - <libnx folder>/default_icon.jpg
 #---------------------------------------------------------------------------------
 TARGET          := $(notdir $(CURDIR))
 BUILD           := $(TOPDIR)
 
 ROMFS           := game
 
-APP_TITLE       := Grid Clickers 3D
+APP_TITLE       := Grid Clickers Switch
 APP_AUTHOR      := House of Cards Studios
-APP_TITLEID     := 0x4441
+APP_TITLEID     := 4441
 APP_VERSION     := 1.0
 APP_DESCRIPTION := Click to your heart's content!
 
-ICON            := icon.png
+ICON            := icon.jpg
 
-#---------------------------------------------------------------------------------
-# cia variables
-#
-# BANNER_IMAGE: the banner must be a 256x128px png
-# BANNER_AUDIO: audio must be wav or ogg and ~3 seconds long maximum
-# UNIQUE_ID   : a hex number, must be unique so it does not overwrite other apps
-#               keep the leading 0x part, only change the last four numbers
-# PRODUCT_CODE: change the last four digits, must also be unique (?)
-#---------------------------------------------------------------------------------
-
-RSF_PATH        := cia/info.rsf
-BANNER_AUDIO    := cia/audio.wav
-BANNER_IMAGE    := cia/banner.png
-
-ICON_FLAGS      := nosavebackups,visible
-UNIQUE_ID       := 0x4441 # must be unique!
-PRODUCT_CODE    := CTR-H-GRCL # change this too
-
-#---------------------------------------------------------------------------------
-# build options
-#---------------------------------------------------------------------------------
-
-export OUTPUT    :=    $(TARGET)
-export TOPDIR    :=    $(CURDIR)
+export OUTPUT   := $(TARGET)
+export TOPDIR   := $(CURDIR)
 
 ifeq ($(strip $(ICON)),)
-	icons := $(wildcard *.png)
-	ifneq (,$(findstring $(TARGET).png,$(icons)))
-		export APP_ICON := $(TOPDIR)/$(TARGET).png
+	icons := $(wildcard *.jpg)
+	ifneq (,$(findstring $(TARGET).jpg,$(icons)))
+		export APP_ICON := $(TOPDIR)/$(TARGET).jpg
 	else
-		ifneq (,$(findstring icon.png,$(icons)))
-			export APP_ICON := $(TOPDIR)/icon.png
+		ifneq (,$(findstring icon.jpg,$(icons)))
+			export APP_ICON := $(TOPDIR)/icon.jpg
 		endif
 	endif
 else
 	export APP_ICON := $(TOPDIR)/$(ICON)
 endif
 
+all: $(OUTPUT).nacp $(OUTPUT).nro
+
+clean:
+	@echo clean ...
+	@rm -fr $(TARGET).pfs0 $(TARGET).nso $(TARGET).nro $(TARGET).nacp
+
 #---------------------------------------------------------------------------------
 # main targets
 #---------------------------------------------------------------------------------
 
-all: $(OUTPUT).smdh $(OUTPUT).3dsx
+$(OUTPUT).nacp:
+	@nacptool --create "$(APP_TITLE)" "$(APP_AUTHOR)" "$(APP_VERSION)" $@
 
-clean:
-	@echo clean ...
-	@rm -fr $(TARGET).3dsx $(OUTPUT).smdh $(OUTPUT).cia banner.bnr icon.icn
-
-$(OUTPUT).smdh:
-	@echo "Building smdh.."
-	@smdhtool --create "$(APP_TITLE)" "$(APP_DESCRIPTION)" "$(APP_AUTHOR)" "$(APP_ICON)" $@
-
-$(OUTPUT).3dsx:
-	@echo "Building 3dsx.."
-	@3dsxtool $(LOVEPOTION_3DS) $@ --smdh=$(OUTPUT).smdh --romfs=$(ROMFS)
-
-#---------------------------------------------------------------------------------
-# cia targets
-#
-# note: to build as a cia, download bannertool and makerom
-# add the respective OS binary to your path:
-#
-# export makerom=<path/to/makerom>
-# export bannertool=<path/to/bannertool>
-#---------------------------------------------------------------------------------
-cia: banner icon
-	@$(makerom) -f cia \
-	-o $(OUTPUT).cia \
-	-target t \
-	-exefslogo \
-	-elf $(LOVEPOTION_3DS) \
-	-rsf "$(RSF_PATH)" \
-	-banner "$(BUILD)/banner.bnr" \
-	-icon "$(BUILD)/icon.icn" \
-	-DAPP_TITLE="$(APP_TITLE)" \
-	-DAPP_PRODUCT_CODE="$(PRODUCT_CODE)" \
-	-DAPP_UNIQUE_ID="$(UNIQUE_ID)" \
-	-DAPP_ROMFS="$(ROMFS)"
-
-banner:
-	@$(bannertool) makebanner \
-	-i "$(BANNER_IMAGE)" \
-	-a "$(BANNER_AUDIO)" \
-	-o "$(BUILD)/banner.bnr"
-
-icon:
-	@$(bannertool) makesmdh \
-	-s "$(APP_TITLE)" \
-	-l "$(APP_DESCRIPTION)" \
-	-p "$(APP_AUTHOR)" \
-	-i "$(APP_ICON)" \
-	-f "$(ICON_FLAGS)" \
-	-o "$(BUILD)/icon.icn"
+$(OUTPUT).nro : $(OUTPUT).nacp
+	@elf2nro $(LOVEPOTION_SWITCH) $(OUTPUT).nro \
+	--icon=$(APP_ICON) \
+	--nacp=$(OUTPUT).nacp \
+	--romfsdir=$(ROMFS)
