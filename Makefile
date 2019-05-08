@@ -45,10 +45,10 @@ BUILD           := $(TOPDIR)
 
 ROMFS           := game
 
-APP_TITLE       := Grid Clickers Switch
+APP_TITLE       := Grid Clickers NX
 APP_AUTHOR      := House of Cards Studios
 APP_TITLEID     := 4441
-APP_VERSION     := 1.0
+APP_VERSION     := 1.1
 APP_DESCRIPTION := Click to your heart's content!
 
 ICON            := icon.jpg
